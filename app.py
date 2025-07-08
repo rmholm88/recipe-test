@@ -1,10 +1,12 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import openai
 import base64
 import requests
 import os
 
 app = Flask(__name__)
+CORS(app)
 
 # Set your OpenAI API key and GitHub token from environment variables
 openai.api_key = os.getenv("OPENAI_API_KEY")
