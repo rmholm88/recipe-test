@@ -37,6 +37,8 @@ def ocr_and_format_html(image_base64):
     return response.choices[0].message.content
 
 def upload_to_gist(filename, content):
+    import sys
+
     url = "https://api.github.com/gists"
     headers = {
         "Authorization": f"token {github_token}",
@@ -54,11 +56,12 @@ def upload_to_gist(filename, content):
 
     response = requests.post(url, headers=headers, json=data)
 
-    # NEW: Show exact GitHub error if it fails
     if response.status_code == 201:
         return response.json()["files"][filename]["raw_url"]
     else:
-        print("GitHub API error:", response.status_code, response.text)
+        print("❌ GitHub API error:", file=sys.stderr)
+        print(f"Status Code: {response.status_code}", file=sys.stderr)
+        print(f"Response Text: {response.text}", file=sys.stderr)
         return None
 
 
