@@ -39,7 +39,8 @@ def ocr_and_format_html(image_base64):
 def upload_to_gist(filename, content):
     url = "https://api.github.com/gists"
     headers = {
-        "Authorization": f"token {github_token}"
+        "Authorization": f"token {github_token}",
+        "Accept": "application/vnd.github.v3+json"
     }
     data = {
         "description": "Recipe HTML File",
@@ -50,11 +51,16 @@ def upload_to_gist(filename, content):
             }
         }
     }
+
     response = requests.post(url, headers=headers, json=data)
+
+    # NEW: Show exact GitHub error if it fails
     if response.status_code == 201:
         return response.json()["files"][filename]["raw_url"]
     else:
+        print("GitHub API error:", response.status_code, response.text)
         return None
+
 
 @app.route("/api/process", methods=["POST"])
 def process():
