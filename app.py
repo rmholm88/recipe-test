@@ -1,33 +1,37 @@
-# app.py
-
 from flask import Flask, request, jsonify
-from flask_cors import CORS
 import openai
 import base64
 import requests
 import os
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS
 
 # Set your OpenAI API key and GitHub token from environment variables
 openai.api_key = os.getenv("OPENAI_API_KEY")
 github_token = os.getenv("GITHUB_TOKEN")
 
 def ocr_and_format_html(image_base64):
-    response = openai.ChatCompletion.create(
+    client = openai.OpenAI(api_key=openai.api_key)
+
+    response = client.chat.completions.create(
         model="gpt-4-vision-preview",
         messages=[
             {"role": "system", "content": "Extract the recipe from the image and format it as schema.org compatible HTML."},
             {
                 "role": "user",
                 "content": [
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{image_base64}"
+                        }
+                    }
                 ]
             }
         ],
         max_tokens=2000
     )
+
     return response.choices[0].message.content
 
 def upload_to_gist(filename, content):
@@ -65,10 +69,7 @@ def process():
         else:
             return jsonify({"error": "Failed to upload HTML"}), 500
     except Exception as e:
-        print("ERROR:", str(e))  # <-- Add this line
         return jsonify({"error": str(e)}), 500
-
 
 if __name__ == "__main__":
     app.run(debug=True)
-
