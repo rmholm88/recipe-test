@@ -16,7 +16,7 @@ def ocr_and_format_html(image_base64):
     client = openai.OpenAI(api_key=openai.api_key)
 
     response = client.chat.completions.create(
-        model="gpt-4-vision-preview",
+        model="gpt-4-vision",
         messages=[
             {"role": "system", "content": "Extract the recipe from the image and format it as schema.org compatible HTML."},
             {
