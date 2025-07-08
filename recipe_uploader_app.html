@@ -29,6 +29,11 @@
       color: green;
       display: none;
     }
+    #loading {
+      margin-top: 1rem;
+      font-size: 1.1rem;
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -40,7 +45,7 @@
 
   <div id="error"></div>
   <div id="success"></div>
-  <div id="loading" style="display:none; font-size:1.1rem;">⏳ Processing your recipe...</div>
+  <div id="loading">⏳ Processing your recipe...</div>
 
   <script>
     async function uploadImage() {
@@ -48,15 +53,19 @@
       const file = fileInput.files[0];
       const errorDiv = document.getElementById("error");
       const successDiv = document.getElementById("success");
+      const loadingDiv = document.getElementById("loading");
 
       errorDiv.style.display = "none";
       successDiv.style.display = "none";
+      loadingDiv.style.display = "none";
 
       if (!file) {
         errorDiv.textContent = "Please select an image file.";
         errorDiv.style.display = "block";
         return;
       }
+
+      loadingDiv.style.display = "block"; // show loading
 
       try {
         const reader = new FileReader();
@@ -71,17 +80,29 @@
             body: JSON.stringify({ image: base64Image })
           });
 
+          loadingDiv.style.display = "none"; // hide loading
+
           if (!response.ok) {
             throw new Error("Failed to process the image. Server error.");
           }
 
           const data = await response.json();
-      successDiv.innerHTML = `✅ Success! <a href="${data.htmlUrl}" target="_blank">View your recipe</a>`;
-          successDiv.style.display = "block";
+
+          if (data.htmlUrl) {
+            // Option 1: redirect to result
+            window.location.href = data.htmlUrl;
+
+            // Option 2: show success link below (uncomment if preferred)
+            // successDiv.innerHTML = `✅ Success! <a href="${data.htmlUrl}" target="_blank">View your recipe</a>`;
+            // successDiv.style.display = "block";
+          } else {
+            throw new Error("Invalid response from server.");
+          }
         };
 
         reader.readAsDataURL(file);
       } catch (error) {
+        loadingDiv.style.display = "none";
         console.error(error);
         errorDiv.textContent = "❌ Something went wrong. Please try again.";
         errorDiv.style.display = "block";
