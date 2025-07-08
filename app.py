@@ -65,7 +65,9 @@ def process():
         else:
             return jsonify({"error": "Failed to upload HTML"}), 500
     except Exception as e:
+        print("ERROR:", str(e))  # <-- Add this line
         return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run(debug=True)
