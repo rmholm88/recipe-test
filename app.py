@@ -32,6 +32,7 @@ def ocr_and_format_html(image_base64):
             }
         ],
         max_tokens=2000
+        temperature=0
     )
     return response.choices[0].message.content
 
