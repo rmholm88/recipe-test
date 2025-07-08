@@ -75,7 +75,7 @@
           }
 
           const data = await response.json();
-          successDiv.innerHTML = `✅ Success! <a href="${data.recipe_url}" target="_blank">View your recipe</a>`;
+      successDiv.innerHTML = `✅ Success! <a href="${data.htmlUrl}" target="_blank">View your recipe</a>`;
           successDiv.style.display = "block";
         };
 
