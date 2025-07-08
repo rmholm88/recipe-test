@@ -67,20 +67,34 @@ def upload_to_gist(filename, content):
 
 @app.route("/api/process", methods=["POST"])
 def process():
+    print("📥 Received request to /api/process")
     data = request.get_json()
-    image_base64 = data.get("image")
-    if not image_base64:
+
+    if not data or "image" not in data:
+        print("⚠️ No image found in request")
         return jsonify({"error": "No image provided"}), 400
 
+    image_base64 = data["image"]
+
     try:
+        print("🔍 Starting OCR and HTML generation")
         html = ocr_and_format_html(image_base64)
+        print("✅ HTML successfully generated")
+
+        print("⬆️ Attempting to upload to GitHub Gist")
         html_url = upload_to_gist("recipe.html", html)
+
         if html_url:
+            print(f"✅ Upload succeeded: {html_url}")
             return jsonify({"htmlUrl": html_url})
         else:
+            print("❌ Upload to GitHub Gist failed")
             return jsonify({"error": "Failed to upload HTML"}), 500
+
     except Exception as e:
+        print("🔥 Exception occurred:", e)
         return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run(debug=True)
