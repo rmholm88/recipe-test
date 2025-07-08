@@ -1,20 +1,24 @@
 from flask import Flask, request, jsonify, Response
+from flask_cors import CORS
 import openai
 import base64
 import os
 import uuid
 
 app = Flask(__name__)
+CORS(app)  # 👈 Needed for frontend to talk to backend
 
-# Set your OpenAI API key in environment variables
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# In-memory store for rendered recipes
 RECIPE_STORE = {}
+
+@app.route("/")
+def index():
+    return "API is running", 200
 
 def ocr_and_format_html(image_base64):
     response = openai.chat.completions.create(
-        model="gpt-4o",  # ✅ Use latest multimodal model
+        model="gpt-4o",
         messages=[
             {"role": "system", "content": "Extract the recipe from the image and format it as schema.org compatible HTML."},
             {
@@ -42,13 +46,10 @@ def process():
     try:
         rendered_html = ocr_and_format_html(image_base64)
 
-        # Save HTML with a unique ID
         recipe_id = str(uuid.uuid4())
         RECIPE_STORE[recipe_id] = rendered_html
 
-        # Return the URL to the rendered recipe
         return jsonify({"htmlUrl": f"https://recipe-test.onrender.com/recipes/{recipe_id}"})
-
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -61,3 +62,4 @@ def serve_recipe(recipe_id):
 
 if __name__ == "__main__":
     app.run(debug=True)
+
