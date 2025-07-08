@@ -6,7 +6,7 @@ import os
 import uuid
 
 app = Flask(__name__)
-CORS(app)  # 👈 Needed for frontend to talk to backend
+CORS(app, origins=["https://rmholm88.github.io"])  # 👈 Needed for frontend to talk to backend
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
@@ -46,8 +46,12 @@ def ocr_and_format_html(image_base64):
     return response.choices[0].message.content
 
 
-@app.route("/api/process", methods=["POST"])
+@app.route("/api/process", methods=["POST", "OPTIONS"])
 def process():
+    # Handle preflight CORS check
+    if request.method == "OPTIONS":
+        return '', 204
+
     data = request.get_json()
     image_base64 = data.get("image")
 
@@ -63,6 +67,7 @@ def process():
         return jsonify({"htmlUrl": f"https://recipe-test.onrender.com/recipes/{recipe_id}"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route("/recipes/<recipe_id>")
 def serve_recipe(recipe_id):
