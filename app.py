@@ -25,8 +25,12 @@ def ocr_and_format_html(image_base64):
                 "role": "system",
                 "content": (
                     "You are an expert recipe parser. Extract the full recipe from the image. "
-                    "Return it as valid semantic HTML using schema.org Recipe markup. "
-                    "Clearly format the recipe title, ingredients (as a <ul> list), instructions (as an ordered <ol> list), "
+                    "Return valid semantic HTML using schema.org Recipe markup. "
+                    "Strictly wrap the ingredients in a <ul> tag with each item in a <li>. "
+                    "Wrap the instructions in a <ol> tag with each step in a separate <li>. "
+                    "Use <h1> for the recipe title and include <p> for yield/servings. "
+                    "Do not use dashes, numbers, or line breaks for formatting — only proper HTML elements. "
+
                     "and yield/serving size. At the bottom, include a <script type='application/ld+json'> block with proper structured data. "
                     "Ensure all content is complete and readable. Do not omit any ingredients or steps."
                 )
