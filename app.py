@@ -6,7 +6,7 @@ import os
 import uuid
 
 app = Flask(__name__)
-CORS(app, origins=["https://rmholm88.github.io"])  # 👈 Needed for frontend to talk to backend
+CORS(app, origins=["https://rmholm88.github.io"])
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
@@ -19,7 +19,7 @@ def index():
 def ocr_and_format_html(image_base64):
     response = openai.chat.completions.create(
         model="gpt-4o",
-        temperature=0,  # 🔒 Make output deterministic
+        temperature=0.3,  # 🔓 Allow some flexibility in response
         messages=[
             {
                 "role": "system",
@@ -29,10 +29,12 @@ def ocr_and_format_html(image_base64):
                     "Strictly wrap the ingredients in a <ul> tag with each item in a <li>. "
                     "Wrap the instructions in a <ol> tag with each step in a separate <li>. "
                     "Use <h1> for the recipe title and include <p> for yield/servings. "
-                    "Do not use dashes, numbers, or line breaks for formatting — only proper HTML elements. "
+                    "At the bottom, include a <script type='application/ld+json'> block with proper structured data. "
+                    "Ensure all content is complete and readable. Do not omit any ingredients or steps. "
 
-                    "and yield/serving size. At the bottom, include a <script type='application/ld+json'> block with proper structured data. "
-                    "Ensure all content is complete and readable. Do not omit any ingredients or steps."
+                    "Ignore decorative text, bylines, headers, footers, or irrelevant magazine elements. "
+                    "Only extract ingredients and instructions. "
+                    "Use context clues like numbers or bullet points to identify steps."
                 )
             },
             {
@@ -52,15 +54,20 @@ def ocr_and_format_html(image_base64):
 
 @app.route("/api/process", methods=["POST", "OPTIONS"])
 def process():
-    # Handle preflight CORS check
     if request.method == "OPTIONS":
-        return '', 204
+        response = Response()
+        response.headers.add("Access-Control-Allow-Origin", "https://rmholm88.github.io")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type")
+        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        return response, 204
 
     data = request.get_json()
     image_base64 = data.get("image")
 
     if not image_base64:
-        return jsonify({"error": "No image provided"}), 400
+        response = jsonify({"error": "No image provided"})
+        response.headers.add("Access-Control-Allow-Origin", "https://rmholm88.github.io")
+        return response, 400
 
     try:
         rendered_html = ocr_and_format_html(image_base64)
@@ -68,9 +75,13 @@ def process():
         recipe_id = str(uuid.uuid4())
         RECIPE_STORE[recipe_id] = rendered_html
 
-        return jsonify({"htmlUrl": f"https://recipe-test.onrender.com/recipes/{recipe_id}"})
+        response = jsonify({"htmlUrl": f"https://recipe-test.onrender.com/recipes/{recipe_id}"})
+        response.headers.add("Access-Control-Allow-Origin", "https://rmholm88.github.io")
+        return response
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        response = jsonify({"error": str(e)})
+        response.headers.add("Access-Control-Allow-Origin", "https://rmholm88.github.io")
+        return response, 500
 
 
 @app.route("/recipes/<recipe_id>")
@@ -79,6 +90,14 @@ def serve_recipe(recipe_id):
     if not html:
         return "Recipe not found", 404
     return Response(html, mimetype='text/html')
+
+
+@app.errorhandler(Exception)
+def handle_unexpected_error(e):
+    response = jsonify({"error": str(e)})
+    response.headers.add("Access-Control-Allow-Origin", "https://rmholm88.github.io")
+    return response, 500
+
 
 if __name__ == "__main__":
     app.run(debug=True)
