@@ -72,14 +72,24 @@ def process():
     if not image_base64:
         return jsonify({"error": "No image provided"}), 400
 
+    print(f"📷 Received image, size: {len(image_base64)} bytes")
+
     try:
         rendered_html = ocr_and_format_html(image_base64)
         recipe_id = str(uuid.uuid4())
         RECIPE_STORE[recipe_id] = rendered_html
+
+        print(f"✅ Recipe parsed and stored with ID: {recipe_id}")
         return jsonify({"htmlUrl": f"https://recipe-test.onrender.com/recipes/{recipe_id}"})
+
+    except openai.OpenAIError as oe:
+        print(f"❌ OpenAI API error: {oe}")
+        return jsonify({"error": "Failed to process image with OpenAI"}), 502
+
     except Exception as e:
-        print(f"❌ Exception in /api/process: {e}")
-        return jsonify({"error": "Processing failed"}), 500
+        print(f"❌ Unexpected server error: {e}")
+        return jsonify({"error": "Internal Server Error"}), 500
+
 
 @app.route("/recipes/<recipe_id>")
 def serve_recipe(recipe_id):
