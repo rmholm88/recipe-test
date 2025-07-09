@@ -99,107 +99,111 @@
   <div id="error"></div>
   <div id="success"></div>
 
-<script>
-  async function uploadImage() {
-    const fileInput = document.querySelector('input[type="file"]');
-    const file = fileInput.files[0];
-    const errorDiv = document.getElementById("error");
-    const successDiv = document.getElementById("success");
-    const loadingDiv = document.getElementById("loading");
+  <script>
+    async function uploadImage() {
+      const fileInput = document.querySelector('input[type="file"]');
+      const file = fileInput.files[0];
+      const errorDiv = document.getElementById("error");
+      const successDiv = document.getElementById("success");
+      const loadingDiv = document.getElementById("loading");
 
-    errorDiv.style.display = "none";
-    successDiv.style.display = "none";
-    loadingDiv.style.display = "none";
-
-    if (!file) {
-      errorDiv.textContent = "Please select an image file.";
-      errorDiv.style.display = "block";
-      return;
-    }
-
-    if (!file.type.startsWith("image/")) {
-      errorDiv.textContent = "Only image files are allowed.";
-      errorDiv.style.display = "block";
-      return;
-    }
-
-    loadingDiv.style.display = "block";
-
-    try {
-      const resizedBase64 = await resizeImage(file, 1000); // Resize to max 1000px
-
-      const response = await fetchWithTimeout("https://recipe-test.onrender.com/api/process", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ image: resizedBase64 })
-      }, 25000); // 25 sec timeout
-
+      errorDiv.style.display = "none";
+      successDiv.style.display = "none";
       loadingDiv.style.display = "none";
 
-      if (!response.ok) throw new Error("Server error");
-
-      const data = await response.json();
-
-      if (data.htmlUrl) {
-        window.location.href = data.htmlUrl;
-      } else {
-        throw new Error("Invalid response");
+      if (!file) {
+        errorDiv.textContent = "Please select an image file.";
+        errorDiv.style.display = "block";
+        return;
       }
-    } catch (error) {
-      loadingDiv.style.display = "none";
-      errorDiv.textContent = "❌ Something went wrong. Please try again.";
-      errorDiv.style.display = "block";
-      console.error("Upload error:", error);
+
+      if (!file.type.startsWith("image/")) {
+        errorDiv.textContent = "Only image files are allowed.";
+        errorDiv.style.display = "block";
+        return;
+      }
+
+      if (file.size > 10 * 1024 * 1024) {
+        errorDiv.textContent = "Image file is too large. Max 10MB allowed.";
+        errorDiv.style.display = "block";
+        return;
+      }
+
+      loadingDiv.style.display = "block";
+
+      try {
+        const resizedBase64 = await resizeImage(file, 1000); // Resize to 1000px max width
+
+        const response = await fetchWithTimeout("https://recipe-test.onrender.com/api/process", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ image: resizedBase64 })
+        }, 25000); // 25 sec timeout
+
+        loadingDiv.style.display = "none";
+
+        if (!response.ok) throw new Error("Server error");
+
+        const data = await response.json();
+
+        if (data.htmlUrl) {
+          window.location.href = data.htmlUrl;
+        } else {
+          throw new Error("Invalid response");
+        }
+      } catch (error) {
+        loadingDiv.style.display = "none";
+        if (error.name === "AbortError") {
+          errorDiv.textContent = "⏱️ Request timed out. Server might be busy.";
+        } else {
+          errorDiv.textContent = "❌ Something went wrong. Please try again.";
+        }
+        errorDiv.style.display = "block";
+        console.error("Upload error:", error);
+      }
     }
-  }
 
-function resizeImage(file, maxWidth) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = function(event) {
-      const img = new Image();
-      img.onload = function() {
-        console.log("Original image size:", img.width, img.height);
-
-        const scale = maxWidth / img.width;
-        const canvas = document.createElement("canvas");
-        canvas.width = maxWidth;
-        canvas.height = img.height * scale;
-
-        console.log("Canvas size:", canvas.width, canvas.height);
-
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const base64 = canvas.toDataURL("image/jpeg", 0.8).split(',')[1];
-        resolve(base64);
-      };
-      img.onerror = reject;
-      img.src = event.target.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-
-  async function fetchWithTimeout(resource, options = {}, timeout = 25000) {
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), timeout);
-    try {
-      const response = await fetch(resource, {
-        ...options,
-        signal: controller.signal
+    function resizeImage(file, maxWidth) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          const img = new Image();
+          img.onload = function() {
+            console.log("Original image size:", img.width, img.height);
+            const scale = maxWidth / img.width;
+            const canvas = document.createElement("canvas");
+            canvas.width = maxWidth;
+            canvas.height = img.height * scale;
+            console.log("Canvas size:", canvas.width, canvas.height);
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            const base64 = canvas.toDataURL("image/jpeg", 0.8).split(',')[1];
+            resolve(base64);
+          };
+          img.onerror = reject;
+          img.src = event.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
       });
-      return response;
-    } finally {
-      clearTimeout(id);
     }
-  }
-</script>
 
-
+    async function fetchWithTimeout(resource, options = {}, timeout = 25000) {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeout);
+      try {
+        const response = await fetch(resource, {
+          ...options,
+          signal: controller.signal
+        });
+        return response;
+      } finally {
+        clearTimeout(id);
+      }
+    }
+  </script>
 </body>
 </html>
 
