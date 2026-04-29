@@ -3,184 +3,337 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>📸 Upload Your Recipe</title>
+  <title>Recipe Scanner</title>
   <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     :root {
-      color-scheme: dark;
+      --bg:            #0a0a0a;
+      --surface:       #141414;
+      --surface-2:     #1c1c1c;
+      --border:        #272727;
+      --border-active: #404040;
+      --accent:        #00bfa6;
+      --accent-dim:    rgba(0, 191, 166, 0.12);
+      --text:          #f0f0f0;
+      --text-muted:    #777;
+      --error:         #f87171;
     }
 
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #121212;
-      color: #f1f1f1;
-      margin: 0;
-      padding: 2rem;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      gap: 1rem;
+    }
+
+    .wordmark {
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 420px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2.25rem 2rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .card-header {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .camera-icon {
+      width: 52px;
+      height: 52px;
+      background: var(--accent-dim);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
     }
 
     h1 {
-      margin-bottom: 2rem;
+      font-size: 1.3rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--text);
     }
 
-    input[type="file"] {
-      padding: 0.5rem;
-      background-color: #1f1f1f;
-      color: #f1f1f1;
-      border: 1px solid #444;
-      border-radius: 4px;
-      margin-bottom: 1rem;
+    .subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+      max-width: 280px;
     }
 
-    button {
-      background-color: #00bfa6;
-      color: white;
-      border: none;
-      padding: 0.6rem 1.2rem;
-      font-size: 1rem;
-      border-radius: 5px;
+    .drop-zone {
+      border: 1.5px dashed var(--border-active);
+      border-radius: 14px;
+      padding: 1.75rem 1.25rem;
+      text-align: center;
       cursor: pointer;
-      transition: background-color 0.2s ease;
+      transition: border-color 0.18s ease, background 0.18s ease;
+      position: relative;
+      background: var(--surface-2);
     }
 
-    button:hover {
-      background-color: #00a792;
+    .drop-zone:hover,
+    .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: var(--accent-dim);
     }
 
-    #error, #success, #loading {
-      margin-top: 1rem;
-      font-size: 1rem;
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
     }
 
-    #error {
-      color: #ff6b6b;
+    .drop-prompt {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      pointer-events: none;
+    }
+
+    .upload-icon {
+      font-size: 1.6rem;
+      opacity: 0.5;
+      margin-bottom: 0.15rem;
+    }
+
+    .drop-primary {
+      font-size: 0.88rem;
+      color: var(--text);
+    }
+
+    .drop-primary strong {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .drop-secondary {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .file-selected {
       display: none;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.82rem;
+      color: var(--accent);
+      margin-top: 0.6rem;
+      justify-content: center;
+      pointer-events: none;
+      word-break: break-all;
     }
 
-    #success {
-      color: #4cd964;
-      display: none;
+    .file-selected.visible { display: flex; }
+
+    .btn {
+      width: 100%;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      padding: 0.82rem 1.5rem;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
     }
 
-    #loading {
+    .btn:hover:not(:disabled) { background: #00a892; }
+    .btn:active:not(:disabled) { transform: scale(0.985); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .status-row {
       display: none;
-      color: #ccc;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      min-height: 1.25rem;
+    }
+
+    .status-row.loading {
+      display: flex;
+      color: var(--text-muted);
+    }
+
+    .status-row.error {
+      display: flex;
+      color: var(--error);
     }
 
     .spinner {
-      display: inline-block;
-      width: 16px;
-      height: 16px;
-      border: 2px solid #ccc;
-      border-top: 2px solid #00bfa6;
+      width: 15px;
+      height: 15px;
+      border: 2px solid #333;
+      border-top-color: var(--accent);
       border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-left: 0.5rem;
+      animation: spin 0.75s linear infinite;
+      flex-shrink: 0;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    a {
-      color: #00bfa6;
+    .footer-note {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-align: center;
+      opacity: 0.6;
     }
   </style>
 </head>
 <body>
-  <h1>📸 Upload Your Recipe</h1>
 
-  <input type="file" accept="image/*">
-  <br>
-  <button onclick="uploadImage()">Convert Recipe</button>
+  <div class="wordmark">Recipe Scanner</div>
 
-  <div id="loading"><span>⏳ Processing your recipe</span><div class="spinner"></div></div>
-  <div id="error"></div>
-  <div id="success"></div>
+  <div class="card">
+    <div class="card-header">
+      <div class="camera-icon">📸</div>
+      <h1>Scan a Recipe</h1>
+      <p class="subtitle">Upload a photo of any recipe and get a clean, importable page instantly.</p>
+    </div>
+
+    <div class="drop-zone" id="dropZone">
+      <input type="file" accept="image/*" id="fileInput">
+      <div class="drop-prompt">
+        <span class="upload-icon">⬆️</span>
+        <p class="drop-primary"><strong>Choose a photo</strong> or drag it here</p>
+        <p class="drop-secondary">JPG · PNG · HEIC &nbsp;·&nbsp; Max 10 MB</p>
+      </div>
+      <div class="file-selected" id="fileSelected">
+        <span>📄</span><span id="fileName"></span>
+      </div>
+    </div>
+
+    <button class="btn" id="convertBtn" onclick="uploadImage()">Convert Recipe</button>
+
+    <div class="status-row" id="statusRow"></div>
+  </div>
+
+  <p class="footer-note">Powered by GPT-4o vision</p>
 
   <script>
+    const dropZone    = document.getElementById('dropZone');
+    const fileInput   = document.getElementById('fileInput');
+    const fileNameEl  = document.getElementById('fileName');
+    const fileSelected = document.getElementById('fileSelected');
+    const statusRow   = document.getElementById('statusRow');
+    const convertBtn  = document.getElementById('convertBtn');
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files[0]) showFile(fileInput.files[0].name);
+    });
+
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) { fileInput.files = e.dataTransfer.files; showFile(file.name); }
+    });
+
+    function showFile(name) {
+      fileNameEl.textContent = name;
+      fileSelected.classList.add('visible');
+    }
+
+    function setStatus(type, message) {
+      statusRow.className = `status-row ${type}`;
+      if (type === 'loading') {
+        statusRow.innerHTML = `<div class="spinner"></div><span>${message}</span>`;
+      } else {
+        statusRow.textContent = message;
+      }
+    }
+
+    function clearStatus() {
+      statusRow.className = 'status-row';
+      statusRow.innerHTML = '';
+    }
+
     async function uploadImage() {
-      const fileInput = document.querySelector('input[type="file"]');
       const file = fileInput.files[0];
-      const errorDiv = document.getElementById("error");
-      const successDiv = document.getElementById("success");
-      const loadingDiv = document.getElementById("loading");
+      clearStatus();
 
-      errorDiv.style.display = "none";
-      successDiv.style.display = "none";
-      loadingDiv.style.display = "none";
+      if (!file)                          return setStatus('error', 'Please select an image file.');
+      if (!file.type.startsWith('image/')) return setStatus('error', 'Only image files are allowed.');
+      if (file.size > 10 * 1024 * 1024)   return setStatus('error', 'Image is too large. Max 10 MB.');
 
-      if (!file) {
-        errorDiv.textContent = "Please select an image file.";
-        errorDiv.style.display = "block";
-        return;
-      }
-
-      if (!file.type.startsWith("image/")) {
-        errorDiv.textContent = "Only image files are allowed.";
-        errorDiv.style.display = "block";
-        return;
-      }
-
-      if (file.size > 10 * 1024 * 1024) {
-        errorDiv.textContent = "Image file is too large. Max 10MB allowed.";
-        errorDiv.style.display = "block";
-        return;
-      }
-
-      loadingDiv.style.display = "block";
+      convertBtn.disabled = true;
+      setStatus('loading', 'Processing your recipe…');
 
       try {
-        const resizedBase64 = await resizeImage(file, 1000); // Resize to 1000px max width
+        const resizedBase64 = await resizeImage(file, 1000);
 
-        const response = await fetchWithTimeout("https://recipe-test.onrender.com/api/process", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
+        const response = await fetchWithTimeout('https://recipe-test.onrender.com/api/process', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ image: resizedBase64 })
-        }, 90000); // 25 sec timeout
+        }, 90000);
 
-        loadingDiv.style.display = "none";
-
-        if (!response.ok) throw new Error("Server error");
+        if (!response.ok) throw new Error('Server error');
 
         const data = await response.json();
-
         if (data.htmlUrl) {
           window.location.href = data.htmlUrl;
         } else {
-          throw new Error("Invalid response");
+          throw new Error('Invalid response');
         }
       } catch (error) {
-        loadingDiv.style.display = "none";
-        if (error.name === "AbortError") {
-          errorDiv.textContent = "⏱️ Request timed out. Server might be busy.";
+        convertBtn.disabled = false;
+        if (error.name === 'AbortError') {
+          setStatus('error', 'Request timed out. The server might be busy — please try again.');
         } else {
-          errorDiv.textContent = "❌ Something went wrong. Please try again.";
+          setStatus('error', 'Something went wrong. Please try again.');
         }
-        errorDiv.style.display = "block";
-        console.error("Upload error:", error);
+        console.error('Upload error:', error);
       }
     }
 
     function resizeImage(file, maxWidth) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = function(event) {
+        reader.onload = event => {
           const img = new Image();
-          img.onload = function() {
-            console.log("Original image size:", img.width, img.height);
+          img.onload = () => {
             const scale = maxWidth / img.width;
-            const canvas = document.createElement("canvas");
+            const canvas = document.createElement('canvas');
             canvas.width = maxWidth;
             canvas.height = img.height * scale;
-            console.log("Canvas size:", canvas.width, canvas.height);
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            const base64 = canvas.toDataURL("image/jpeg", 0.8).split(',')[1];
-            resolve(base64);
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/jpeg', 0.8).split(',')[1]);
           };
           img.onerror = reject;
           img.src = event.target.result;
@@ -194,11 +347,7 @@
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), timeout);
       try {
-        const response = await fetch(resource, {
-          ...options,
-          signal: controller.signal
-        });
-        return response;
+        return await fetch(resource, { ...options, signal: controller.signal });
       } finally {
         clearTimeout(id);
       }
@@ -206,5 +355,3 @@
   </script>
 </body>
 </html>
-
-
