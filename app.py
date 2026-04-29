@@ -91,20 +91,21 @@ def extract_title(body_html):
 
 
 def wrap_columns(body_html):
-    """Wrap the ingredients (h2+ul) and instructions (h2+ol) in a two-column grid."""
-    ing  = re.search(r'<h2[^>]*>.*?</h2>\s*<ul[\s\S]*?</ul>',  body_html, re.DOTALL | re.IGNORECASE)
-    inst = re.search(r'<h2[^>]*>.*?</h2>\s*<ol[\s\S]*?</ol>', body_html, re.DOTALL | re.IGNORECASE)
-    if not ing or not inst:
+    """Split at the Ingredients and Instructions h2 headings and wrap in a two-column grid."""
+    ing_h2  = re.search(r'<h2[^>]*>\s*Ingredients\s*</h2>',  body_html, re.IGNORECASE)
+    inst_h2 = re.search(r'<h2[^>]*>\s*Instructions\s*</h2>', body_html, re.IGNORECASE)
+    if not ing_h2 or not inst_h2:
         return body_html
-    between = body_html[ing.end():inst.start()].strip()
-    inst_content = (between + '\n' + inst.group(0)) if between else inst.group(0)
-    two_col = (
+    before       = body_html[:ing_h2.start()]
+    ingredients  = body_html[ing_h2.start():inst_h2.start()]
+    instructions = body_html[inst_h2.start():]
+    return (
+        before +
         '<div class="recipe-cols">'
-        f'<div class="col-ingredients">{ing.group(0)}</div>'
-        f'<div class="col-instructions">{inst_content}</div>'
+        f'<div class="col-ingredients">{ingredients}</div>'
+        f'<div class="col-instructions">{instructions}</div>'
         '</div>'
     )
-    return body_html[:ing.start()] + two_col + body_html[inst.end():]
 
 
 RECIPE_PAGE_CSS = """
