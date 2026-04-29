@@ -82,6 +82,13 @@ def extract_body(html):
     return html.strip()
 
 
+def extract_title(body_html):
+    match = re.search(r'<h1[^>]*>(.*?)</h1>', body_html, re.DOTALL | re.IGNORECASE)
+    if match:
+        return re.sub(r'<[^>]+>', '', match.group(1)).strip()
+    return "Recipe"
+
+
 RECIPE_PAGE_CSS = """
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -136,9 +143,7 @@ RECIPE_PAGE_CSS = """
     border-bottom: 1px solid var(--border);
   }
 
-  /* metadata <p> tags */
-  h1 ~ p,
-  .meta, .meta p {
+  h1 ~ p, .meta, .meta p {
     font-size: 0.85rem;
     color: var(--text-muted);
     margin-bottom: 0.25rem;
@@ -158,7 +163,7 @@ RECIPE_PAGE_CSS = """
     margin: 2rem 0 0.875rem;
   }
 
-  /* ingredients */
+  /* ingredients — tappable checklist */
   ul {
     list-style: none;
     display: flex;
@@ -173,7 +178,9 @@ RECIPE_PAGE_CSS = """
     padding: 0.5rem 0.75rem;
     font-size: 0.93rem;
     border-radius: 8px;
-    transition: background 0.15s;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.2s;
+    user-select: none;
   }
 
   ul li:hover { background: var(--accent-dim); }
@@ -181,12 +188,23 @@ RECIPE_PAGE_CSS = """
   ul li::before {
     content: '';
     flex-shrink: 0;
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1.5px solid #444;
+    background: transparent;
+    margin-top: 0.15em;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  ul li.checked {
+    opacity: 0.4;
+    text-decoration: line-through;
+  }
+
+  ul li.checked::before {
     background: var(--accent);
-    opacity: 0.6;
-    margin-top: 0.5em;
+    border-color: var(--accent);
   }
 
   /* instructions */
@@ -230,17 +248,19 @@ RECIPE_PAGE_CSS = """
     flex-shrink: 0;
   }
 
+  /* footer */
   .recipe-footer {
     max-width: 680px;
     margin: 0 auto;
-    padding: 1rem 1.25rem 2.5rem;
+    padding: 1.25rem 1.25rem 1rem;
     border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
   }
 
   .scan-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
     font-size: 0.85rem;
     font-weight: 600;
     color: var(--accent);
@@ -251,22 +271,86 @@ RECIPE_PAGE_CSS = """
 
   .scan-link:hover { opacity: 1; }
 
+  .copy-btn {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.4rem 0.85rem;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+
+  .copy-btn:hover { color: var(--text); border-color: #444; }
+  .copy-btn.copied { color: var(--accent); border-color: var(--accent); }
+
+  /* anylist import section */
+  .anylist-section {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 0 1.25rem 2.5rem;
+  }
+
+  .anylist-section summary {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0;
+    transition: color 0.15s;
+  }
+
+  .anylist-section summary:hover { color: var(--text); }
+  .anylist-section summary::before { content: '▸'; font-size: 0.7rem; transition: transform 0.2s; }
+  .anylist-section[open] summary::before { transform: rotate(90deg); }
+
+  .anylist-steps {
+    margin-top: 0.75rem;
+    padding: 1rem 1.25rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .anylist-steps li {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+    list-style: decimal;
+    margin-left: 1.1rem;
+  }
+
+  .anylist-steps li strong { color: var(--text); }
+
   script[type="application/ld+json"] { display: none; }
 
   @media (max-width: 480px) {
     .recipe-hero img { height: 220px; }
     ol li { grid-template-columns: 1.75rem 1fr; gap: 0.625rem; padding: 0.875rem; }
     ol li::before { width: 1.75rem; height: 1.75rem; font-size: 0.7rem; }
+    .recipe-footer { flex-wrap: wrap; }
   }
 """
 
 
 def build_recipe_page(body_html, recipe_id, has_image):
+    title = extract_title(body_html)
+
     hero = ""
     if has_image:
         hero = f"""
   <div class="recipe-hero">
-    <img src="/recipes/{recipe_id}/image" alt="Recipe photo" loading="lazy"
+    <img src="/recipes/{recipe_id}/image" alt="{title}" loading="lazy"
          onerror="this.parentElement.style.display='none'">
   </div>"""
 
@@ -275,7 +359,7 @@ def build_recipe_page(body_html, recipe_id, has_image):
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Recipe</title>
+  <title>{title}</title>
   <style>{RECIPE_PAGE_CSS}</style>
 </head>
 <body>
@@ -284,8 +368,37 @@ def build_recipe_page(body_html, recipe_id, has_image):
     {body_html}
   </div>
   <div class="recipe-footer">
-    <a href="https://rmholm88.github.io/recipe-test/recipe_uploader_app.html" class="scan-link">← Scan another recipe</a>
+    <a href="https://rmholm88.github.io/recipe-test/recipe_uploader_app.html" class="scan-link">← Scan another</a>
+    <button class="copy-btn" id="copyBtn" onclick="copyLink()">Copy link</button>
   </div>
+  <details class="anylist-section">
+    <summary>How to import into Anylist</summary>
+    <ol class="anylist-steps">
+      <li>Open this page in <strong>Safari</strong> on your iPhone or iPad</li>
+      <li>Tap the <strong>Share</strong> button (the box with an arrow)</li>
+      <li>Scroll the share sheet and tap <strong>Anylist</strong></li>
+      <li>Review the recipe and tap <strong>Save Recipe</strong></li>
+    </ol>
+  </details>
+  <script>
+    // Ingredient checklist
+    document.querySelectorAll('ul li').forEach(li => {{
+      li.addEventListener('click', () => li.classList.toggle('checked'));
+    }});
+
+    // Copy link
+    function copyLink() {{
+      const btn = document.getElementById('copyBtn');
+      navigator.clipboard.writeText(window.location.href).then(() => {{
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {{
+          btn.textContent = 'Copy link';
+          btn.classList.remove('copied');
+        }}, 2000);
+      }});
+    }}
+  </script>
 </body>
 </html>"""
 

@@ -294,6 +294,10 @@
       convertBtn.disabled = true;
       setStatus('loading', 'Processing your recipe…');
 
+      const coldStartTimer = setTimeout(() => {
+        setStatus('loading', 'Waking up the server — this can take up to a minute on first use…');
+      }, 8000);
+
       try {
         const resizedBase64 = await resizeImage(file, 1000);
 
@@ -303,6 +307,7 @@
           body: JSON.stringify({ image: resizedBase64 })
         }, 90000);
 
+        clearTimeout(coldStartTimer);
         if (!response.ok) throw new Error('Server error');
 
         const data = await response.json();
@@ -312,6 +317,7 @@
           throw new Error('Invalid response');
         }
       } catch (error) {
+        clearTimeout(coldStartTimer);
         convertBtn.disabled = false;
         if (error.name === 'AbortError') {
           setStatus('error', 'Request timed out. The server might be busy — please try again.');
