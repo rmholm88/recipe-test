@@ -5,37 +5,12 @@ import base64
 import os
 import uuid
 import re
-import psycopg2
 
 app = Flask(__name__)
 CORS(app, origins=["https://rmholm88.github.io"])
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-
-def get_db():
-    return psycopg2.connect(DATABASE_URL)
-
-
-def init_db():
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS recipes (
-                    id TEXT PRIMARY KEY,
-                    html TEXT NOT NULL,
-                    image_data TEXT,
-                    created_at TIMESTAMPTZ DEFAULT NOW()
-                )
-            """)
-            cur.execute("""
-                ALTER TABLE recipes ADD COLUMN IF NOT EXISTS image_data TEXT
-            """)
-        conn.commit()
-
-
-init_db()
+RECIPE_STORE = {}
 
 
 @app.after_request
@@ -327,13 +302,7 @@ def process():
         rendered_html = ocr_and_format_html(image_base64)
         recipe_id = str(uuid.uuid4())
 
-        with get_db() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "INSERT INTO recipes (id, html, image_data) VALUES (%s, %s, %s)",
-                    (recipe_id, rendered_html, image_base64)
-                )
-            conn.commit()
+        RECIPE_STORE[recipe_id] = {"html": rendered_html, "image": image_base64}
 
         print(f"✅ Recipe parsed and stored with ID: {recipe_id}")
         return jsonify({"htmlUrl": f"https://recipe-test.onrender.com/recipes/{recipe_id}"})
@@ -349,27 +318,20 @@ def process():
 
 @app.route("/recipes/<recipe_id>/image")
 def serve_recipe_image(recipe_id):
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT image_data FROM recipes WHERE id = %s", (recipe_id,))
-            row = cur.fetchone()
-    if not row or not row[0]:
+    entry = RECIPE_STORE.get(recipe_id)
+    if not entry or not entry.get("image"):
         return "Not found", 404
-    return Response(base64.b64decode(row[0]), mimetype="image/jpeg")
+    return Response(base64.b64decode(entry["image"]), mimetype="image/jpeg")
 
 
 @app.route("/recipes/<recipe_id>")
 def serve_recipe(recipe_id):
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT html, image_data FROM recipes WHERE id = %s", (recipe_id,))
-            row = cur.fetchone()
-    if not row:
+    entry = RECIPE_STORE.get(recipe_id)
+    if not entry:
         return "Recipe not found", 404
 
-    body = extract_body(row[0])
-    has_image = row[1] is not None
-    return Response(build_recipe_page(body, recipe_id, has_image), mimetype='text/html')
+    body = extract_body(entry["html"])
+    return Response(build_recipe_page(body, recipe_id, has_image=True), mimetype='text/html')
 
 
 if __name__ == "__main__":

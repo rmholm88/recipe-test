@@ -3,4 +3,3 @@ openai
 requests
 gunicorn
 flask-cors
-psycopg2-binary
