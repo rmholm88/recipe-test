@@ -89,18 +89,35 @@ def extract_title(body_html):
     return "Recipe"
 
 
+def wrap_columns(body_html):
+    """Wrap the ingredients (h2+ul) and instructions (h2+ol) in a two-column grid."""
+    ing  = re.search(r'<h2[^>]*>.*?</h2>\s*<ul[\s\S]*?</ul>',  body_html, re.DOTALL | re.IGNORECASE)
+    inst = re.search(r'<h2[^>]*>.*?</h2>\s*<ol[\s\S]*?</ol>', body_html, re.DOTALL | re.IGNORECASE)
+    if not ing or not inst:
+        return body_html
+    between = body_html[ing.end():inst.start()].strip()
+    inst_content = (between + '\n' + inst.group(0)) if between else inst.group(0)
+    two_col = (
+        '<div class="recipe-cols">'
+        f'<div class="col-ingredients">{ing.group(0)}</div>'
+        f'<div class="col-instructions">{inst_content}</div>'
+        '</div>'
+    )
+    return body_html[:ing.start()] + two_col + body_html[inst.end():]
+
+
 RECIPE_PAGE_CSS = """
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
     --bg:         #0a0a0a;
     --surface:    #141414;
-    --surface-2:  #1c1c1c;
     --border:     #272727;
     --accent:     #00bfa6;
     --accent-dim: rgba(0, 191, 166, 0.1);
     --text:       #f0f0f0;
     --text-muted: #777;
+    --max-w:      820px;
   }
 
   body {
@@ -111,38 +128,42 @@ RECIPE_PAGE_CSS = """
     min-height: 100dvh;
   }
 
+  /* hero image */
   .recipe-hero {
     width: 100%;
-    max-height: 340px;
+    max-height: 380px;
     overflow: hidden;
     background: var(--surface);
   }
 
   .recipe-hero img {
     width: 100%;
-    height: 340px;
+    height: 380px;
     object-fit: cover;
     display: block;
-    opacity: 0.92;
+    opacity: 0.9;
   }
 
+  /* main content container */
   .recipe-body {
-    max-width: 680px;
+    max-width: var(--max-w);
     margin: 0 auto;
-    padding: 2rem 1.25rem 3rem;
+    padding: 2.25rem 1.5rem 3rem;
   }
 
+  /* title */
   h1 {
-    font-size: clamp(1.65rem, 5vw, 2.4rem);
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
     font-weight: 800;
     letter-spacing: -0.04em;
-    line-height: 1.12;
+    line-height: 1.1;
     color: var(--text);
-    margin-bottom: 1rem;
+    margin-bottom: 0.875rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--border);
   }
 
+  /* metadata */
   h1 ~ p, .meta, .meta p {
     font-size: 0.85rem;
     color: var(--text-muted);
@@ -154,14 +175,33 @@ RECIPE_PAGE_CSS = """
     font-weight: 600;
   }
 
+  /* section labels */
   h2 {
-    font-size: 0.68rem;
+    font-size: 0.72rem;
     font-weight: 700;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.13em;
     text-transform: uppercase;
     color: var(--accent);
-    margin: 2rem 0 0.875rem;
+    padding-bottom: 0.6rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
   }
+
+  /* two-column layout */
+  .recipe-cols {
+    display: grid;
+    grid-template-columns: 5fr 7fr;
+    gap: 3rem;
+    align-items: start;
+    margin-top: 1.75rem;
+  }
+
+  .col-ingredients,
+  .col-instructions {
+    min-width: 0;
+  }
+
+  .col-instructions h2 { margin-top: 0; }
 
   /* ingredients — tappable checklist */
   ul {
@@ -174,9 +214,9 @@ RECIPE_PAGE_CSS = """
   ul li {
     display: flex;
     align-items: baseline;
-    gap: 0.65rem;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.93rem;
+    gap: 0.7rem;
+    padding: 0.55rem 0.6rem;
+    font-size: 0.92rem;
     border-radius: 8px;
     cursor: pointer;
     transition: background 0.15s, opacity 0.2s;
@@ -188,24 +228,17 @@ RECIPE_PAGE_CSS = """
   ul li::before {
     content: '';
     flex-shrink: 0;
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
     border-radius: 4px;
-    border: 1.5px solid #444;
+    border: 1.5px solid #3a3a3a;
     background: transparent;
-    margin-top: 0.15em;
+    margin-top: 0.2em;
     transition: background 0.15s, border-color 0.15s;
   }
 
-  ul li.checked {
-    opacity: 0.4;
-    text-decoration: line-through;
-  }
-
-  ul li.checked::before {
-    background: var(--accent);
-    border-color: var(--accent);
-  }
+  ul li.checked { opacity: 0.35; text-decoration: line-through; }
+  ul li.checked::before { background: var(--accent); border-color: var(--accent); }
 
   /* instructions */
   ol {
@@ -222,11 +255,11 @@ RECIPE_PAGE_CSS = """
     grid-template-columns: 2rem 1fr;
     gap: 0.875rem;
     align-items: start;
-    padding: 1rem;
+    padding: 1rem 1.125rem;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
-    font-size: 0.93rem;
+    font-size: 0.92rem;
     line-height: 1.65;
     transition: border-color 0.15s;
   }
@@ -235,7 +268,7 @@ RECIPE_PAGE_CSS = """
 
   ol li::before {
     content: counter(steps);
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 800;
     color: var(--accent);
     background: var(--accent-dim);
@@ -250,9 +283,9 @@ RECIPE_PAGE_CSS = """
 
   /* footer */
   .recipe-footer {
-    max-width: 680px;
+    max-width: var(--max-w);
     margin: 0 auto;
-    padding: 1.25rem 1.25rem 1rem;
+    padding: 1.25rem 1.5rem 1rem;
     border-top: 1px solid var(--border);
     display: flex;
     align-items: center;
@@ -278,7 +311,7 @@ RECIPE_PAGE_CSS = """
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 0.4rem 0.85rem;
+    padding: 0.4rem 0.875rem;
     cursor: pointer;
     transition: color 0.15s, border-color 0.15s;
     white-space: nowrap;
@@ -289,9 +322,9 @@ RECIPE_PAGE_CSS = """
 
   /* anylist import section */
   .anylist-section {
-    max-width: 680px;
+    max-width: var(--max-w);
     margin: 0 auto;
-    padding: 0 1.25rem 2.5rem;
+    padding: 0 1.5rem 2.5rem;
   }
 
   .anylist-section summary {
@@ -334,8 +367,13 @@ RECIPE_PAGE_CSS = """
 
   script[type="application/ld+json"] { display: none; }
 
-  @media (max-width: 480px) {
-    .recipe-hero img { height: 220px; }
+  @media (max-width: 680px) {
+    .recipe-hero img { height: 240px; }
+    .recipe-cols {
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+    .col-instructions { margin-top: 2rem; }
     ol li { grid-template-columns: 1.75rem 1fr; gap: 0.625rem; padding: 0.875rem; }
     ol li::before { width: 1.75rem; height: 1.75rem; font-size: 0.7rem; }
     .recipe-footer { flex-wrap: wrap; }
@@ -344,6 +382,7 @@ RECIPE_PAGE_CSS = """
 
 
 def build_recipe_page(body_html, recipe_id, has_image):
+    body_html = wrap_columns(body_html)
     title = extract_title(body_html)
 
     hero = ""
