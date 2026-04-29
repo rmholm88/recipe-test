@@ -284,7 +284,7 @@ def build_recipe_page(body_html, recipe_id, has_image):
     {body_html}
   </div>
   <div class="recipe-footer">
-    <a href="https://rmholm88.github.io" class="scan-link">← Scan another recipe</a>
+    <a href="https://rmholm88.github.io/recipe-test/recipe_uploader_app.html" class="scan-link">← Scan another recipe</a>
   </div>
 </body>
 </html>"""
