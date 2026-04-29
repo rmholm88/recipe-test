@@ -63,7 +63,12 @@ def ocr_and_format_html(image_base64):
         ],
         max_tokens=2000
     )
-    return response.choices[0].message.content
+    content = response.choices[0].message.content.strip()
+    if content.startswith("```"):
+        content = content.split("\n", 1)[-1]
+    if content.endswith("```"):
+        content = content.rsplit("```", 1)[0]
+    return content.strip()
 
 
 def extract_body(html):
