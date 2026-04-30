@@ -367,6 +367,27 @@ RECIPE_PAGE_CSS = """
 
   .anylist-steps li strong { color: var(--text); }
 
+  .anylist-download {
+    display: flex;
+    gap: 0.625rem;
+    margin-top: 0.875rem;
+    flex-wrap: wrap;
+  }
+
+  .anylist-download a {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--accent);
+    text-decoration: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.35rem 0.75rem;
+    transition: border-color 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+
+  .anylist-download a:hover { border-color: var(--accent); }
+
   script[type="application/ld+json"] { display: none; }
 
   @media (max-width: 680px) {
@@ -415,11 +436,15 @@ def build_recipe_page(body_html, recipe_id, has_image):
   <details class="anylist-section">
     <summary>How to import into Anylist</summary>
     <ol class="anylist-steps">
-      <li>Open this page in <strong>Safari</strong> on your iPhone or iPad</li>
-      <li>Tap the <strong>Share</strong> button (the box with an arrow)</li>
+      <li>Open this page on your phone or tablet</li>
+      <li>Tap the <strong>Share</strong> button (the box with an arrow) to open the share sheet</li>
       <li>Scroll the share sheet and tap <strong>Anylist</strong></li>
       <li>Review the recipe and tap <strong>Save Recipe</strong></li>
     </ol>
+    <div class="anylist-download">
+      <a href="https://apps.apple.com/us/app/anylist-grocery-shopping-list/id522167641" target="_blank" rel="noopener">↓ Download for iPhone / iPad</a>
+      <a href="https://play.google.com/store/apps/details?id=com.purplecover.anylist" target="_blank" rel="noopener">↓ Download for Android</a>
+    </div>
   </details>
   <script>
     // Ingredient checklist
